@@ -139,6 +139,113 @@ plot(testy)
 # Helps detect if points are evenly spread across x or y dimensions, or show clustering or bias.
 
 
+# Now we will work with nbfires
+data(nbfires)
+str(nbfires)
+
+fire_types <- nbfires$marks$fire.type
+summary(fire_types)
+plot(fire_types)
+plot(nbfires)
+# This extracts the fire type mark for each point and plots the counts and shows all fire locations on the map
+
+# Seperating points by type
+forest_points <- nbfires[nbfires$marks$fire.type == 'forest']
+grass_points <- nbfires[nbfires$marks$fire.type == 'grass']
+dump_points <- nbfires[nbfires$marks$fire.type == 'dump']
+other_points <- nbfires[nbfires$marks$fire.type == 'other']
+
+# Plotting the spatial density for each fire type
+plot(density(forest_points))
+plot(density(grass_points))
+plot(density(dump_points))
+plot(density(other_points))
+# This uses kernel smoothing to estimate the spatial intensity or density of each type
+# Higher intensity means the type is more common
+
+# Empty space distances (distance from random locations to the nearest fire)
+forest_points <- nbfires[nbfires$marks$fire.type == "forest"]
+emp <- distmap(forest_points)
+plot(emp, main = "Empty space distances")
+plot(forest_points, add = TRUE)
+
+# distmap() computes a map of empty space distances which is the distance from every location to the nearest forest fire
+# plot(emp) shows this as a heatmap with darker colours closer to the fire
+# The forest points plot adds fire locations on top of the map
+
+# Analyze spatial distribution of forest fires
+Fest(forest_points)
+plot(Fest(forest_points))
+# F function test examines the empty space distribution which is the distrances from random locations to the nearest point
+# This tests for clustering vs randomness
+Gest(forest_points)
+plot(Gest(forest_points))
+# G function test looks at the nearest neighbor distances between the actual points and tells you if points tend to be closer (cluster) or evenly spaced (regular)
+
+# Removing makrs for spatial modeling
+forest_points_no_marks <- unmark(forest_points)
+plot(forest_points_no_marks)
+
+# Removes fire type labels so we treat the pattern as unmarked and just spatial locations
+# This is needed to fit some spatial models
+
+# Fitting a spatial model
+fit3rd <- ppm(forest_points_no_marks, ~polynom(x, y, 3))
+plot(fit3rd, how = "image", se = FALSE)
+
+# This fits a poisson point process model using a 3rd degree polynomial in x and y. This captures spatial trends in the intensity surface or how fire density
+# changes across the reigon. The plot() shows the predicted intensity as a heatmanp and turns off standard error shading
+
+# Let us now work with Spatio Temporal Point Processes using the STPP package
+
+# Defining a spatio temporal intensity function
+lbda1 <- function(x, y, t) {
+  1000 * (1 - x)^2 * y^2 * t^3
+}
+# This defines a lambda function which is the intensity or how likely a point is to occur at each x,y,t location
+# (1 - x)^2	Higher intensity near x = 0 (left side of x-axis)
+# y^2	Higher intensity near y = 1 (top of y-axis)
+# t^3	Intensity increases over time (later times = more points)
+# 10000	Scales everything up to get more points
+# more points appear over time, and mostly in the upper-left region of the space.
+
+# Simulate Spatio Temporal Poisson Point Process
+ipp1 <- rpp(lambda = lbda1)
+# This simulates a spatio temporal poisson point process using the lambda I defined earlier
+# The result ipp1 includes locations and times of all simulated points
+# specifically ipp1$xyt contains the (x,y,t) coordinates
+str(ipp1)
+# This is the internal structure with $xyt the matrix of x,y,t values for each point
+# $npoints is the number of points
+# $lambda is the intensity function used
+
+# Convert to a 3D point object
+ipp2 <- as.3dpoints(ipp1$xyt)
+# Converts the xyt matrix into a 3D point object that you can plot in 3D which is useful for visualizing points in space and time together
+
+# Plotting the 3D spatio temporal point pattern
+plot(ipp2, pch = 19, mark = TRUE)
+# Shows the 3D scatter plot of points and sets settings for the points to make solid and add labels 
+
+# Animate the points over time
+animation(ipp1$xyt, runtime = 10)
+# This animates the point pattern over time (t).
+# runtime = 10 sets animation length to 10 seconds.
+# shows how points appear progressively as time increases.
+
+# Plotting the point pattern in 2D
+plot(ipp1$xyt)
+# This plots the 3D points as a 2D projection, usually plotting x and y.
+# Time (t) isn't shown here, but it's still part of the data.
+
+# Plot the distibution of event times
+plot(density(ipp1$xyt[,3]))
+# ipp1$xyt[,3] extracts the t (time) values from all the points.
+# density() computes a kernel density estimate for the time values.
+# The plot shows when events were most common over time.
+
+
+
 
 
 
